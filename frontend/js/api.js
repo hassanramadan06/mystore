@@ -82,7 +82,22 @@ const Api = {
   // Orders
   checkout: (dto) => request("/api/orders/checkout", { method: "POST", auth: true, body: dto }),
   myOrders: () => request("/api/orders", { auth: true }),
-  getOrder: (id) => request(`/api/orders/${id}`, { auth: true })
+  getOrder: (id) => request(`/api/orders/${id}`, { auth: true }),
+
+  // Admin — products
+  adminCreateProduct: (dto) => request("/api/products", { method: "POST", auth: true, body: dto }),
+  adminUpdateProduct: (id, dto) => request(`/api/products/${id}`, { method: "PUT", auth: true, body: dto }),
+  adminDeleteProduct: (id) => request(`/api/products/${id}`, { method: "DELETE", auth: true }),
+
+  // Admin — categories
+  adminCreateCategory: (dto) => request("/api/categories", { method: "POST", auth: true, body: dto }),
+  adminUpdateCategory: (id, dto) => request(`/api/categories/${id}`, { method: "PUT", auth: true, body: dto }),
+  adminDeleteCategory: (id) => request(`/api/categories/${id}`, { method: "DELETE", auth: true }),
+
+  // Admin — orders
+  adminListOrders: () => request("/api/orders/all", { auth: true }),
+  adminUpdateOrderStatus: (id, status) =>
+    request(`/api/orders/${id}/status`, { method: "PUT", auth: true, body: { status } })
 };
 
 window.Api = Api;

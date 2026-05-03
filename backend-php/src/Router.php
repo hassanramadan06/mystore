@@ -26,15 +26,20 @@ class Router
         // Strip query string and trailing slash.
         $path = '/' . trim(parse_url($path, PHP_URL_PATH) ?? '/', '/');
 
+        // First pass: find a route whose pattern AND method both match.
+        // Track whether any route matched the path so we can distinguish 404 from 405.
+        $pathMatched = false;
         foreach ($this->routes as [$m, $pattern, $handler]) {
             $params = [];
-            if ($this->match($pattern, $path, $params)) {
-                if ($m !== $method) {
-                    Helpers::error('Method not allowed', 405);
-                }
+            if (!$this->match($pattern, $path, $params)) continue;
+            $pathMatched = true;
+            if ($m === $method) {
                 $handler(...array_values($params));
                 return;
             }
+        }
+        if ($pathMatched) {
+            Helpers::error('Method not allowed', 405);
         }
         Helpers::error('Not found: ' . $method . ' ' . $path, 404);
     }

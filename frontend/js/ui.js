@@ -36,7 +36,7 @@ async function renderNavbar() {
         <div class="nav-actions">
           <a href="cart.html" aria-label="Cart">Cart<span class="cart-badge" id="cart-badge">${cartCount}</span></a>
           ${user
-            ? `<a href="orders.html">Orders</a><a href="#" id="logout-link">Logout</a>`
+            ? `${user.role === "Admin" ? `<a href="admin.html">Admin</a>` : ""}<a href="orders.html">Orders</a><a href="#" id="logout-link">Logout</a>`
             : `<a href="login.html">Sign in</a>`}
           <button class="menu-toggle" id="menu-toggle" aria-label="Menu">≡</button>
         </div>
