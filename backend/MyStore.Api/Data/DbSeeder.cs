@@ -21,7 +21,11 @@ public static class DbSeeder
             await db.SaveChangesAsync();
         }
 
-        if (await db.Categories.AnyAsync()) return;
+        if (await db.Categories.AnyAsync())
+        {
+            await RefreshBrokenImageUrlsAsync(db);
+            return;
+        }
 
         var iphones = new Category { Name = "iPhone", Slug = "iphone", Description = "Latest iPhones — Pro, Pro Max, and standard models." };
         var macs    = new Category { Name = "MacBook", Slug = "macbook", Description = "MacBook Air and MacBook Pro powered by Apple silicon." };
@@ -62,7 +66,7 @@ public static class DbSeeder
                 Name = "MacBook Pro 14\" M3 Pro",
                 Description = "14.2\" Liquid Retina XDR display, M3 Pro chip, 18GB RAM, 512GB SSD.",
                 Price = 1999m, Stock = 15, Brand = "Apple", IsFeatured = true, CategoryId = macs.Id,
-                ImageUrl = "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/mbp14-spaceblack-select-202310?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1697311054290"
+                ImageUrl = "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/mbp14-spacegray-select-202310?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1697311054290"
             },
             new() {
                 Name = "MacBook Air 13\" M2",
@@ -81,7 +85,7 @@ public static class DbSeeder
                 Name = "iPad Pro 11\" M4",
                 Description = "Ultra Retina XDR display, M4 chip, Apple Pencil Pro support, 256GB.",
                 Price = 999m, Stock = 18, Brand = "Apple", IsFeatured = true, CategoryId = ipads.Id,
-                ImageUrl = "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/ipad-pro-13-select-cell-spaceblack-202405?wid=2560&hei=1440&fmt=p-jpg&qlt=80&.v=1713923480112"
+                ImageUrl = "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/ipad-pro-13-select-wifi-spaceblack-202405?wid=2560&hei=1440&fmt=p-jpg&qlt=80&.v=1713308271133"
             },
             new() {
                 Name = "iPad Air 11\" M2",
@@ -106,7 +110,7 @@ public static class DbSeeder
                 Name = "Apple Watch Series 9 45mm",
                 Description = "Always-On Retina display, S9 SiP, Double Tap gesture, GPS.",
                 Price = 429m, Stock = 45, Brand = "Apple", IsFeatured = true, CategoryId = accs.Id,
-                ImageUrl = "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MR9C3ref_VW_34FR+watch-45-alum-midnight-nc-s9_VW_34FR+watch-face-45-aluminum-midnight-s9_VW_34FR?wid=1400&hei=1400&trim=1%2C0&fmt=p-jpg&qlt=95&.v=1694507905569"
+                ImageUrl = "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/watch-card-40-s9-202309?wid=680&hei=528&fmt=p-jpg&qlt=95&.v=1693945562692"
             },
             new() {
                 Name = "Magic Keyboard for iPad Pro",
@@ -123,5 +127,33 @@ public static class DbSeeder
         };
         db.Products.AddRange(products);
         await db.SaveChangesAsync();
+    }
+
+    // Replaces image URLs that Apple's CDN no longer serves.
+    // Idempotent: only updates rows whose current value matches a known-broken URL.
+    private static async Task RefreshBrokenImageUrlsAsync(AppDbContext db)
+    {
+        var fixes = new Dictionary<string, string>
+        {
+            ["https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/mbp14-spaceblack-select-202310?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1697311054290"] =
+                "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/mbp14-spacegray-select-202310?wid=904&hei=840&fmt=jpeg&qlt=90&.v=1697311054290",
+            ["https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/ipad-pro-13-select-cell-spaceblack-202405?wid=2560&hei=1440&fmt=p-jpg&qlt=80&.v=1713923480112"] =
+                "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/ipad-pro-13-select-wifi-spaceblack-202405?wid=2560&hei=1440&fmt=p-jpg&qlt=80&.v=1713308271133",
+            ["https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MR9C3ref_VW_34FR+watch-45-alum-midnight-nc-s9_VW_34FR+watch-face-45-aluminum-midnight-s9_VW_34FR?wid=1400&hei=1400&trim=1%2C0&fmt=p-jpg&qlt=95&.v=1694507905569"] =
+                "https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/watch-card-40-s9-202309?wid=680&hei=528&fmt=p-jpg&qlt=95&.v=1693945562692"
+        };
+
+        var changed = false;
+        foreach (var (oldUrl, newUrl) in fixes)
+        {
+            var rows = await db.Products.Where(p => p.ImageUrl == oldUrl).ToListAsync();
+            foreach (var p in rows)
+            {
+                p.ImageUrl = newUrl;
+                changed = true;
+            }
+        }
+
+        if (changed) await db.SaveChangesAsync();
     }
 }
