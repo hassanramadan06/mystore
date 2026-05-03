@@ -17,9 +17,11 @@ RewriteRule ^ index.php [L]
 <FilesMatch "(^config\.(php|example\.php)$|^\.env$|^composer\.(json|lock)$|^\.git.*$)">
     Require all denied
 </FilesMatch>
-<DirectoryMatch "^/.*/(src|sql)/">
-    Require all denied
-</DirectoryMatch>
+
+# Block direct access to /src and /sql subdirectories.
+# (DirectoryMatch is only valid in server config, so use RewriteRule instead so
+#  the rule works inside .htaccess too.)
+RewriteRule ^(src|sql)(/|$) - [F,L]
 
 # Standard security headers.
 <IfModule mod_headers.c>
