@@ -85,9 +85,26 @@ $r->put  ('/api/orders/{id}/status',  fn(int $id) => $orders->updateStatus($id))
 $r->patch('/api/orders/{id}/status',  fn(int $id) => $orders->updateStatus($id));
 
 // 4. Dispatch with a top-level error handler that always returns JSON.
+//    The base prefix is auto-detected from SCRIPT_NAME so the same code works whether
+//    deployed at the document root (e.g. /api/...) or under a subdirectory
+//    (e.g. http://localhost/mystore/backend-php/api/... during XAMPP local dev).
 try {
-    $method = $_SERVER['REQUEST_METHOD']  ?? 'GET';
-    $path   = $_SERVER['REQUEST_URI']     ?? '/';
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    $path   = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+
+    $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    // If routes are reached via a sibling /api folder (e.g. public_html/api/index.php),
+    // strip the trailing /api because routes are already declared with /api prefix.
+    if (str_ends_with($base, '/api')) {
+        $base = substr($base, 0, -4);
+    }
+    if ($base === '/' || $base === '.') {
+        $base = '';
+    }
+    if ($base !== '' && str_starts_with($path, $base)) {
+        $path = substr($path, strlen($base)) ?: '/';
+    }
+
     $r->dispatch($method, $path);
 } catch (\Throwable $e) {
     error_log('[mystore] ' . $e);
