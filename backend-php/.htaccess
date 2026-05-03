@@ -1,0 +1,29 @@
+# cPanel / Apache rewrite: every request that isn't a real file goes to index.php.
+# This is what makes pretty URLs like /api/products work without ?path=... query strings.
+
+RewriteEngine On
+
+# Pass the Authorization header through (PHP-FPM/Apache often strips it).
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# If the requested path is NOT a file or directory, route it to index.php.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# Block direct access to config + source files. Apache/PHP normally won't serve
+# these as plain text, but defense in depth.
+<FilesMatch "(^config\.(php|example\.php)$|^\.env$|^composer\.(json|lock)$|^\.git.*$)">
+    Require all denied
+</FilesMatch>
+<DirectoryMatch "^/.*/(src|sql)/">
+    Require all denied
+</DirectoryMatch>
+
+# Standard security headers.
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
